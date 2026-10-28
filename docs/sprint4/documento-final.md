@@ -109,7 +109,9 @@ La cobertura de líneas parece baja, pero hay que leerla bien. La suite es de **
 | Tiempo de respuesta promedio / p95 de la API (local) | 47 ms / 181 ms |
 | Arranque del backend con base nueva | ≈ 17 s |
 | Pasos manuales para correr y obtener el reporte | 0 (push al repositorio, o `npm test`) |
-| Duración total del job en GitHub Actions | *Completar con la primera ejecución en GitHub* (pestaña Actions) |
+| Duración total del pipeline en GitHub Actions | ≈ 1 min 40 s: 92 s el job de pruebas (30 s levantar MySQL, 14 s compilar el backend, 18 s arrancarlo, 3 s la suite) y 9 s publicar el reporte |
+| Resultado en GitHub Actions | 22 / 22 casos, 134 aserciones sin fallos, cobertura de líneas 32,4 % |
+| Reporte publicado | https://augustoba.github.io/suite-api-cadeteria/ |
 
 ## 6. Hallazgos
 
@@ -129,7 +131,7 @@ El detalle, con el impacto para el negocio y la recomendación de cada uno, est�
 ## 7. Lecciones aprendidas
 
 1. **Un verde vale lo que vale el sistema contra el que corre.** El mock nos dio tranquilidad durante un sprint entero, y era falsa.
-2. **Un pipeline "configurado" no es un pipeline funcionando.** El job contra la API real tenía el nombre del archivo equivocado y nunca había corrido. Solo se sabe si se lo ve en verde al menos una vez.
+2. **Un pipeline "configurado" no es un pipeline funcionando.** El job contra la API real tenía el nombre del archivo equivocado y nunca había corrido. Y nos volvió a pasar: nuestra primera corrida en GitHub falló porque `actions/checkout` no acepta el hash corto del commit, algo que en local no se veía. Solo se sabe si se lo ve en verde al menos una vez.
 3. **La inestabilidad casi nunca es de la herramienta: es de los datos.** Los dos fallos que no eran del sistema venían de depender de datos que la suite no controlaba. La solución fue que la suite cree o prepare lo que necesita.
 4. **Correr la suite contra un entorno compartido tiene consecuencias.** Con contraseñas equivocadas, dejamos bloqueado al cadete de prueba del instituto durante 15 minutos. De ahí salió el hallazgo H5. También salió la regla de no correr nunca la suite en bucle contra el servidor, y de que las contraseñas vivan en secretos.
 5. **Medir antes de optimizar.** Sin la línea de base del Sprint 3 contra la API real (0 de 30), "mejoramos la suite" no se podía demostrar.
@@ -144,11 +146,11 @@ El detalle, con el impacto para el negocio y la recomendación de cada uno, est�
 
 ## 9. Distribución del trabajo
 
-*(Completar con lo que hizo cada integrante.)*
+Las tareas se repartieron en cuatro partes de peso similar. Además, los cuatro revisamos la suite, los documentos y ensayamos la defensa en conjunto.
 
 | Integrante | Responsabilidad en el Sprint 4 | Parte en la defensa |
 |---|---|---|
-| Leandro Raúl Vallejo | | Evolución del proyecto (sprints 1 a 3) |
-| Germán Garnica | | La suite: casos, técnicas y demo |
-| Jorge Alberto Medina | | Hallazgos y métricas |
-| Cesar Augusto Basaury Marquesto | | Pipeline CI/CD y decisiones técnicas |
+| Leandro Raúl Vallejo | Organización del repositorio, documentación de la evolución de los sprints 1 a 3 y redacción del documento final. | Evolución del proyecto |
+| Germán Garnica | Diseño y estabilización de los casos de prueba, flujo de un pedido y preparación de la demo en Postman. | La suite: casos, técnicas y demo |
+| Jorge Alberto Medina | Mediciones (estabilidad, cobertura y tiempos), análisis de resultados y redacción de los hallazgos. | Hallazgos y métricas |
+| Cesar Augusto Basaury Marquesto | Pipeline de CI/CD en GitHub Actions, publicación del reporte y preparación del entorno del instituto. | Pipeline CI/CD y decisiones técnicas |

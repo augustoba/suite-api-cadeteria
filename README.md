@@ -6,6 +6,8 @@ Proyecto de Especialización en Herramientas de Testing — cliente QualityTech 
 - **Herramienta:** Postman + Newman, con reportes HTML (`htmlextra`) y JSON.
 - **Sistema bajo prueba:** API REST de una plataforma de cadetería (Java 21, Spring Boot 3.3.5 y MySQL 8), versión `30a29d1`, la misma que está desplegada en la copia del instituto.
 
+**Último reporte:** https://augustoba.github.io/suite-api-cadeteria/
+
 La suite tiene **22 casos de prueba**: los 15 del Sprint 2 (5 endpoints × 3) y 7 del flujo de un pedido, que verifican reglas de negocio. Corre sola en GitHub Actions contra una API levantada dentro del pipeline y publica el reporte en GitHub Pages.
 
 ## Contenido

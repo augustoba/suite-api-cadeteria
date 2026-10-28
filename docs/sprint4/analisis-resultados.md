@@ -49,7 +49,7 @@ Cada hallazgo tiene **qué pasó**, **qué significa para el negocio** y **qué 
 
 **Qué significa para el negocio.** "Tenemos CI contra la API real" era cierto en el papel. Ese tipo de brecha entre lo que se informa y lo que pasa es la que más daña la confianza de un cliente.
 
-**Qué recomendamos (y aplicamos).** El job se reescribió, se activa por defecto y se verificó corriendo los mismos pasos en local con base nueva.
+**Qué recomendamos (y aplicamos).** El job se reescribió, se activa por defecto y se verificó en local con base nueva. Aun así, la primera corrida en GitHub falló por otro detalle que en local no aparecía: `actions/checkout` no acepta el hash corto del commit del backend. Se corrigió con el hash completo y las corridas siguientes dieron 22 de 22. La lección se confirma: hasta no verlo en verde en el lugar donde va a correr, no está probado.
 
 ### H5 — Cualquiera que conozca el DNI de un cadete puede bloquearle la cuenta · Seguridad · Severidad alta
 
