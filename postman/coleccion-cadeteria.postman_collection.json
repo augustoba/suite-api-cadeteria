@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Instituto - Suite automatizada API cadetería (Sprint 3)",
-    "description": "5 endpoints x 3 casos (1 OK + 2 con error) = 15 casos.\n\nCómo usarla:\n1. En la pestaña Variables de la colección, cargar baseUrl y los usuarios de prueba.\n2. Correr la colección completa y EN ORDEN (Run collection): la carpeta \"0. Preparación\" guarda los tokens y los ids que usan los casos.\n3. Cada caso valida solo el código HTTP y el \"codigo\" de error que devuelve la API.\n\nFormato de los errores: { status, error, codigo, message, fieldErrors }.\n\nSprint 3: se agregan chequeos globales (tiempo, Content-Type, formato de error), parametrización (idInexistente, maxMs), credenciales en entornos y limpieza final. Ejecución automática con Newman (ver README).",
+    "name": "Instituto - Suite automatizada API cadeteria (Sprint 4)",
+    "description": "22 casos: los 15 del Sprint 2 (5 endpoints x 3) y 7 del flujo de un pedido (reglas de negocio).\n\nCorrer completa y EN ORDEN: los pasos P guardan tokens e ids y preparan al cadete; Z lo deja LIBRE. El grupo 5 corre despues del 6 porque usa el pedido que crea el flujo.\nCredenciales y URL en los entornos de postman/. Formato de los errores: { status, error, codigo, message, fieldErrors }.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -34,7 +34,7 @@
       "value": ""
     },
     {
-      "key": "pedidoId",
+      "key": "pedidoFlujoId",
       "value": ""
     }
   ],
@@ -555,6 +555,10 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{tokenCadete}}"
+              },
+              {
+                "key": "X-App-Version",
+                "value": "{{versionApp}}"
               }
             ],
             "url": {
@@ -607,6 +611,10 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{tokenCadete}}"
+              },
+              {
+                "key": "X-App-Version",
+                "value": "{{versionApp}}"
               }
             ],
             "url": {
@@ -683,10 +691,67 @@
       ]
     },
     {
-      "name": "5. GET /api/pedidos/me/{id}",
+      "name": "6. Flujo de un pedido - reglas de negocio",
+      "description": "Recorre un pedido de punta a punta. Los pasos P preparan al cadete; los casos verifican las reglas que, si se rompen, cuestan plata o confianza: version minima de la app, espera minima entre retiro y entrega y cierre manual del admin con motivo.",
       "item": [
         {
-          "name": "P3 - Historial del cadete (guarda pedidoId, no cuenta como caso)",
+          "name": "16 - LIBRE con una version vieja de la app -> 400 DATO_INVALIDO",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"codigo = DATO_INVALIDO\", function () { pm.expect(pm.response.json().codigo).to.eql(\"DATO_INVALIDO\"); });",
+                  "console.log(pm.info.requestName + \" -> \" + pm.response.code + \" \" + pm.response.json().codigo + \": \" + pm.response.json().message);",
+                  "pm.test(\"el mensaje pide actualizar la app\", function () { pm.expect(pm.response.json().message).to.match(/versi/i); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCadete}}"
+              },
+              {
+                "key": "X-App-Version",
+                "value": "0"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cadetes/me/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cadetes",
+                "me",
+                "estado"
+              ]
+            },
+            "description": "Regla del backend 30a29d1: una APK vieja no puede ponerse disponible. Se manda la version 0 a proposito: sin el header la API usa la del ultimo login y el resultado dependeria de quien entro antes.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estadoId\": \"LIBRE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "P4 - El cadete pasa a LIBRE con la version vigente (no cuenta como caso)",
           "event": [
             {
               "listen": "test",
@@ -694,11 +759,117 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.test(\"el cadete tiene al menos un pedido finalizado\", function () {",
-                  "  pm.expect(pm.response.json().pedidos).to.be.an(\"array\").that.is.not.empty;",
-                  "});",
-                  "var pedidos = pm.response.json().pedidos || [];",
-                  "if (pedidos.length) { pm.collectionVariables.set(\"pedidoId\", pedidos[0].id); }"
+                  "pm.test(\"queda LIBRE\", function () { pm.expect(pm.response.json().estado.id).to.eql(\"LIBRE\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCadete}}"
+              },
+              {
+                "key": "X-App-Version",
+                "value": "{{versionApp}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cadetes/me/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cadetes",
+                "me",
+                "estado"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estadoId\": \"LIBRE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "P5 - Ubicacion del cadete en el origen (no cuenta como caso)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCadete}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cadetes/me/ubicacion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cadetes",
+                "me",
+                "ubicacion"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lat\": -26.8303,\n  \"lng\": -65.2038\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "P6 - Cerrar incidentes abiertos del cadete (precondicion, no cuenta como caso)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "const abiertas = pm.response.json().filter(function (i) { return i.estado === \"ABIERTA\"; });",
+                  "console.log(\"Incidentes abiertos del cadete: \" + abiertas.length);",
+                  "abiertas.forEach(function (i) {",
+                  "  pm.sendRequest({ url: pm.variables.get(\"baseUrl\") + \"/api/admin/incidencias/\" + i.id + \"/cerrar\", method: \"POST\",",
+                  "    header: { Authorization: \"Bearer \" + pm.collectionVariables.get(\"tokenAdmin\") } }, function (err, res) {",
+                  "    pm.test(\"se cierra el incidente \" + i.id, function () { pm.expect(err).to.eql(null); pm.expect(res.code).to.eql(200); });",
+                  "  });",
+                  "});"
                 ]
               }
             }
@@ -708,11 +879,153 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{tokenCadete}}"
+                "value": "Bearer {{tokenAdmin}}"
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/pedidos/me/historial",
+              "raw": "{{baseUrl}}/api/admin/incidencias?cadeteId={{cadeteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "incidencias?cadeteId={{cadeteId}}"
+              ]
+            },
+            "description": "Un cadete con un reclamo abierto no puede recibir pedidos. La carga demo le deja un reclamo abierto a un cadete elegido al azar, asi que la suite no depende de eso: lo cierra como lo haria el admin desde el panel."
+          }
+        },
+        {
+          "name": "17 - Alta de pedido -> 201 SIN_ASIGNAR",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", function () { pm.response.to.have.status(201); });",
+                  "pm.test(\"pedido en estado SIN_ASIGNAR\", function () { pm.expect(pm.response.json().estado.id).to.eql(\"SIN_ASIGNAR\"); });",
+                  "pm.test(\"tiene numero y conserva el precio\", function () { const p = pm.response.json(); pm.expect(p.numero).to.be.a(\"number\"); pm.expect(Number(p.precio)).to.eql(2500); });",
+                  "pm.collectionVariables.set(\"pedidoFlujoId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/pedidos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "pedidos"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clienteTelefono\": \"3815550001\",\n  \"clienteNombre\": \"Cliente Prueba\",\n  \"origenDireccion\": \"San Martin 500, San Miguel de Tucuman\",\n  \"origenLat\": -26.8303,\n  \"origenLng\": -65.2038,\n  \"destinoDireccion\": \"24 de Septiembre 800, San Miguel de Tucuman\",\n  \"destinoLat\": -26.827,\n  \"destinoLng\": -65.21,\n  \"precio\": 2500,\n  \"detalle\": \"Prueba automatizada (Newman) - se puede borrar\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "18 - Asignar al cadete libre -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"queda ofrecido al cadete\", function () { pm.expect(pm.response.json().cadeteAsignado.id).to.eql(pm.collectionVariables.get(\"cadeteId\")); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/pedidos/{{pedidoFlujoId}}/asignar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "pedidos",
+                "{{pedidoFlujoId}}",
+                "asignar"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cadeteId\": \"{{cadeteId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "19 - El cadete acepta -> 200 EN_CURSO",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"pedido en estado EN_CURSO\", function () { pm.expect(pm.response.json().estado.id).to.eql(\"EN_CURSO\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCadete}}"
+              },
+              {
+                "key": "X-App-Version",
+                "value": "{{versionApp}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pedidos/me/{{pedidoFlujoId}}/aceptar",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -720,12 +1033,173 @@
                 "api",
                 "pedidos",
                 "me",
-                "historial"
+                "{{pedidoFlujoId}}",
+                "aceptar"
               ]
             },
-            "description": "Toma el id de un pedido propio para el caso 13. Si el cadete no tiene pedidos, cargar pedidoId a mano en las variables."
+            "description": ""
           }
         },
+        {
+          "name": "20 - Retirado -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"queda registrada la hora del retiro\", function () { pm.expect(pm.response.json().retiradoEn).to.be.a(\"string\").and.not.empty; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCadete}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pedidos/me/{{pedidoFlujoId}}/recepcion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pedidos",
+                "me",
+                "{{pedidoFlujoId}}",
+                "recepcion"
+              ]
+            },
+            "description": "Boton Retirado de la app. La foto es opcional.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lat\": -26.8303,\n  \"lng\": -65.2038\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "21 - Finalizar antes del tiempo minimo -> 400 DATO_INVALIDO",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"codigo = DATO_INVALIDO\", function () { pm.expect(pm.response.json().codigo).to.eql(\"DATO_INVALIDO\"); });",
+                  "console.log(pm.info.requestName + \" -> \" + pm.response.code + \" \" + pm.response.json().codigo + \": \" + pm.response.json().message);",
+                  "pm.test(\"el mensaje explica la espera\", function () { pm.expect(pm.response.json().message).to.match(/minutos/); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCadete}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pedidos/me/{{pedidoFlujoId}}/finalizar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pedidos",
+                "me",
+                "{{pedidoFlujoId}}",
+                "finalizar"
+              ]
+            },
+            "description": "Control antifraude: entre Retirado y Finalizar tienen que pasar minutos_minimos_retiro_entrega (10 por defecto). Evita que se marque entregado un viaje que no se hizo.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lat\": -26.827,\n  \"lng\": -65.21,\n  \"receptorNombre\": \"Ana Gomez\",\n  \"fotoUrl\": \"https://res.cloudinary.com/demo/image/upload/sample.jpg\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "22 - El admin cierra el pedido con motivo -> 200 FINALIZADO",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"pedido en estado FINALIZADO\", function () { pm.expect(pm.response.json().estado.id).to.eql(\"FINALIZADO\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/pedidos/{{pedidoFlujoId}}/finalizar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "pedidos",
+                "{{pedidoFlujoId}}",
+                "finalizar"
+              ]
+            },
+            "description": "Cierre manual del panel (cuando el cadete no tiene internet): se saltea la espera, por eso exige motivo.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receptorNombre\": \"Ana Gomez\",\n  \"motivo\": \"Cierre de la prueba automatizada\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. GET /api/pedidos/me/{id}",
+      "item": [
         {
           "name": "13 - Pedido propio -> 200",
           "event": [
@@ -735,7 +1209,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.test(\"devuelve el pedido pedido\", function () { pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get(\"pedidoId\")); });",
+                  "pm.test(\"devuelve el pedido pedido (el del flujo)\", function () { pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get(\"pedidoFlujoId\")); });",
                   "pm.test(\"incluye número de pedido\", function () { pm.expect(pm.response.json()).to.have.property(\"numero\"); });"
                 ]
               }
@@ -750,7 +1224,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/pedidos/me/{{pedidoId}}",
+              "raw": "{{baseUrl}}/api/pedidos/me/{{pedidoFlujoId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -758,7 +1232,7 @@
                 "api",
                 "pedidos",
                 "me",
-                "{{pedidoId}}"
+                "{{pedidoFlujoId}}"
               ]
             },
             "description": "Detalle de un pedido del cadete que inició sesión."
@@ -826,7 +1300,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/pedidos/me/{{pedidoId}}",
+              "raw": "{{baseUrl}}/api/pedidos/me/{{pedidoFlujoId}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -834,13 +1308,14 @@
                 "api",
                 "pedidos",
                 "me",
-                "{{pedidoId}}"
+                "{{pedidoFlujoId}}"
               ]
             },
             "description": "Las rutas /api/pedidos/me son solo para cadetes. Mensaje esperado: \"No tenés permiso para hacer eso.\""
           }
         }
-      ]
+      ],
+      "description": "Usa el pedido que crea el grupo 6 (pedidoFlujoId). Antes tomaba uno del historial del cadete, que depende de como reparte la carga demo los pedidos: con una base nueva a veces el cadete no tenia ninguno y el caso 13 fallaba sin que hubiera un error."
     },
     {
       "name": "Z. Limpieza (no cuenta como caso)",
@@ -868,6 +1343,10 @@
               {
                 "key": "Authorization",
                 "value": "Bearer {{tokenCadete}}"
+              },
+              {
+                "key": "X-App-Version",
+                "value": "{{versionApp}}"
               }
             ],
             "body": {

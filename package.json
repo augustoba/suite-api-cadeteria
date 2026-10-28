@@ -1,12 +1,12 @@
 {
-  "name": "tap-sprint3-api-cadeteria",
-  "version": "1.0.0",
-  "description": "Suite automatizada de Postman/Newman para la API de cadetería (Sprint 3 - Proyecto de Especialización en Herramientas de Testing)",
+  "name": "suite-api-cadeteria",
+  "version": "4.0.0",
+  "description": "Suite automatizada de Postman/Newman para la API de cadeteria (Sprint 4 - Proyecto de Especializacion en Herramientas de Testing, Grupo 5)",
   "private": true,
   "scripts": {
-    "mock": "node mock/server.js",
     "test": "newman run postman/coleccion-cadeteria.postman_collection.json -e postman/entorno-local.postman_environment.json -r cli,htmlextra,json --reporter-htmlextra-export reportes/reporte.html --reporter-json-export reportes/reporte.json",
     "test:ci": "newman run postman/coleccion-cadeteria.postman_collection.json -e postman/entorno-ci.postman_environment.json -r cli,htmlextra,json --reporter-htmlextra-export reportes/reporte.html --reporter-json-export reportes/reporte.json",
+    "test:instituto": "newman run postman/coleccion-cadeteria.postman_collection.json -e postman/entorno-instituto.postman_environment.json -r cli,htmlextra,json --reporter-htmlextra-export reportes/reporte.html --reporter-json-export reportes/reporte.json",
     "resumen": "node scripts/resumen.js"
   },
   "devDependencies": {

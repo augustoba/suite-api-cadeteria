@@ -4,50 +4,33 @@ on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    # Todos los dias a las 9 de Tucuman (12 UTC): detecta si algo se rompio aunque nadie haya subido cambios.
+    - cron: "0 12 * * *"
   workflow_dispatch:
+    inputs:
+      destino:
+        description: "Contra que API correr la suite"
+        type: choice
+        options: [aislada, instituto]
+        default: aislada
+      iteraciones:
+        description: "Repeticiones de la suite (solo en la API aislada; sirve para medir estabilidad)"
+        type: number
+        default: 1
+
+env:
+  # Backend bajo prueba: la misma version que esta desplegada en la copia del instituto.
+  BACKEND_REPO: ${{ vars.BACKEND_REPO || 'augustoba/cadeteria-backend' }}
+  BACKEND_REF: ${{ vars.BACKEND_REF || '30a29d1' }}
 
 jobs:
-  # 1) Valida la suite y el pipeline contra un servidor simulado del contrato de la API.
-  #    Corre siempre, sin depender del backend real.
-  suite-contra-mock:
+  # 1) API aislada: MySQL y backend se levantan dentro de la maquina de GitHub, con base nueva y la carga
+  #    de demostracion. No se conecta a ningun servidor: se crea y se borra en cada ejecucion.
+  api-aislada:
+    if: github.event_name != 'workflow_dispatch' || inputs.destino == 'aislada'
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - run: npm install
-
-      - name: Levantar el mock de la API
-        run: |
-          nohup node mock/server.js > mock.log 2>&1 &
-          for i in $(seq 1 15); do curl -sf http://localhost:8080/actuator/health && break || sleep 1; done
-
-      - name: Ejecutar la colección con Newman
-        run: npm run test:ci
-
-      - name: Resumen en la pestaña del workflow
-        if: always()
-        run: npm run resumen
-
-      - name: Subir reportes
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: reportes-mock
-          path: |
-            reportes/
-            mock.log
-
-  # 2) Corre la misma colección contra el backend real (Spring Boot + MySQL).
-  #    Se activa cuando se define la variable del repositorio BACKEND_REPO (ej.: usuario/backend-cadeteria)
-  #    y el secreto BACKEND_TOKEN si el repositorio es privado.
-  api-real:
-    if: ${{ vars.BACKEND_REPO != '' }}
-    runs-on: ubuntu-latest
+    timeout-minutes: 20
     services:
       mysql:
         image: mysql:8.0
@@ -61,10 +44,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/checkout@v4
+      - name: Descargar el backend (${{ env.BACKEND_REF }})
+        uses: actions/checkout@v4
         with:
-          repository: ${{ vars.BACKEND_REPO }}
-          token: ${{ secrets.BACKEND_TOKEN || github.token }}
+          repository: ${{ env.BACKEND_REPO }}
+          ref: ${{ env.BACKEND_REF }}
           path: backend
 
       - uses: actions/setup-java@v4
@@ -72,32 +56,44 @@ jobs:
           distribution: temurin
           java-version: 21
           cache: maven
+          cache-dependency-path: backend/pom.xml
 
       - name: Compilar el backend
-        run: cd backend && ./mvnw -B -q package -DskipTests
+        run: cd backend && chmod +x mvnw && ./mvnw -B -q package -DskipTests
 
-      - name: Levantar el backend
-        # AJUSTAR: nombre del jar y propiedades si difieren. Debe quedar cargada la carga de demostración
-        # (admin, cadete 30111222 y pedidos de ejemplo), igual que en el entorno local.
+      - name: Levantar el backend (con JaCoCo para medir cobertura)
         run: |
-          nohup java -jar backend/target/*SNAPSHOT.jar \
-            --server.port=8080 \
-            --spring.datasource.url=jdbc:mysql://127.0.0.1:3306/cadeteria \
-            --spring.datasource.username=root \
-            --spring.datasource.password=root > api.log 2>&1 &
-          for i in $(seq 1 60); do curl -s http://localhost:8080/api/auth/login/cadete -o /dev/null && break || sleep 2; done
+          curl -sL -o jacocoagent.jar https://repo1.maven.org/maven2/org/jacoco/org.jacoco.agent/0.8.12/org.jacoco.agent-0.8.12-runtime.jar
+          curl -sL -o jacococli.jar https://repo1.maven.org/maven2/org/jacoco/org.jacoco.cli/0.8.12/org.jacoco.cli-0.8.12-nodeps.jar
+          # Valores por defecto del application.yml: localhost:3306, root/root. Sin mail, Cloudinary, Firebase ni WhatsApp real.
+          DEMO_ENABLED=true WHATSAPP_MODO_SIMULADO=true nohup java \
+            -javaagent:jacocoagent.jar=output=tcpserver,port=6300,includes=com.cadeteria.* \
+            -jar backend/target/backend-*.jar > api.log 2>&1 &
+          for i in $(seq 1 90); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" -d '{}' http://localhost:8080/api/auth/login/cadete || true)
+            [ "$code" != "000" ] && echo "API arriba despues de $((i*2)) s" && exit 0
+            sleep 2
+          done
+          echo "La API no arranco"; tail -50 api.log; exit 1
 
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
-      - run: npm install
+      - run: npm ci
 
-      - name: Ejecutar la colección con Newman
-        run: npm run test:ci
+      - name: Ejecutar la suite con Newman
+        run: npm run test:ci -- -n ${{ inputs.iteraciones || 1 }}
 
-      - name: Resumen en la pestaña del workflow
+      - name: Cobertura de codigo del backend
+        if: always()
+        run: |
+          java -jar jacococli.jar dump --port 6300 --destfile jacoco.exec
+          java -jar jacococli.jar report jacoco.exec --classfiles backend/target/classes \
+            --sourcefiles backend/src/main/java --html reportes/cobertura --csv reportes/cobertura.csv
+
+      - name: Resumen en la pestana del workflow
         if: always()
         run: npm run resumen
 
@@ -105,7 +101,67 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: reportes-api-real
+          name: reportes-api-aislada
           path: |
             reportes/
             api.log
+
+      - name: Portada de la pagina (el reporte de Newman)
+        if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: cp reportes/reporte.html reportes/index.html
+
+      - name: Preparar la pagina del reporte
+        if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: reportes/
+
+  # 2) Entrega: publica el ultimo reporte en GitHub Pages (Settings > Pages > Source: GitHub Actions).
+  #    Es la unica "entrega" del pipeline: no despliega nada en ningun servidor.
+  publicar-reporte:
+    needs: api-aislada
+    if: always() && needs.api-aislada.result != 'skipped' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
+
+  # 3) Copia del instituto: solo a mano (Actions > Run workflow > destino: instituto) y una sola vuelta,
+  #    para no cargar el servidor, que es compartido. Las contrasenas salen de los secretos del repositorio.
+  instituto:
+    if: github.event_name == 'workflow_dispatch' && inputs.destino == 'instituto'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency: instituto
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Ejecutar la suite contra la copia del instituto
+        env:
+          ADMIN_PASSWORD: ${{ secrets.INSTITUTO_ADMIN_PASSWORD }}
+          CADETE_PASSWORD: ${{ secrets.INSTITUTO_CADETE_PASSWORD }}
+        run: npm run test:instituto -- --env-var "adminPassword=$ADMIN_PASSWORD" --env-var "cadetePassword=$CADETE_PASSWORD"
+
+      - name: Resumen en la pestana del workflow
+        if: always()
+        run: npm run resumen
+
+      - name: Subir reportes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reportes-instituto
+          path: reportes/
