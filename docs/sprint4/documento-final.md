@@ -5,7 +5,7 @@
 - **Cliente:** QualityTech Solutions
 - **Equipo:** Grupo 5, IES Alfredo Coviello. Cesar Augusto Basaury Marquesto, Germán Garnica, Jorge Alberto Medina y Leandro Raúl Vallejo.
 - **Herramienta:** Postman + Newman, con GitHub Actions como pipeline.
-- **Sistema bajo prueba:** API REST de una plataforma de cadetería (Java 21, Spring Boot 3.3.5, MySQL 8), versión `30a29d1`.
+- **Sistema bajo prueba:** API REST de una plataforma de cadetería (Java 21, Spring Boot 3.3.5, MySQL 8), versión `30a29d1`, desde el Sprint 2. En el Sprint 1 fue la API de Gestión de Alumnos del instituto.
 - **Entrega:** 29/10/2026
 
 ---
@@ -31,7 +31,8 @@ Este sprint no fue de hacer más, fue de hacer mejor:
 
 | Sprint | Semanas | Qué hicimos | Qué aprendimos |
 |---|---|---|---|
-| 1 | 1–2 | Elección del sistema bajo prueba (la API de cadetería) y de la herramienta (Postman). Reconocimiento de la API y de su formato de errores. *(Completar con lo entregado en el Sprint 1.)* | Que una API bien diseñada para probar devuelve errores con forma fija (`status`, `codigo`, `message`, `fieldErrors`), y eso permite automatizar las verificaciones. |
+| 1 | 1–2 | **Fundamentos y entorno.** Investigación teórica: testing de APIs, pirámide de testing, Postman (colecciones, entornos, scripts), Newman y OWASP API Security Top 10. Elegimos Postman. El primer sistema bajo prueba fue la API de **Gestión de Alumnos** del instituto, un proyecto propio en Spring Boot y MySQL que levantamos en local. | La primera evidencia ya fue un hallazgo: con una contraseña equivocada, el login de esa API respondía **500** (error del servidor) en lugar de 401. Un error del cliente no tiene que verse como una caída del servidor. |
+| — | — | **Cambio de sistema bajo prueba.** Al empezar el Sprint 2 pasamos a la API de cadetería. *(Completar el motivo del cambio.)* | Elegir el sistema bajo prueba también es una decisión de testing: conviene uno con reglas de negocio para probar y un formato de errores estable. |
 | 2 | 3–4 | **Diseño de pruebas y primeras automatizaciones.** 15 casos sobre 5 endpoints (1 positivo + 2 negativos por endpoint), matriz de trazabilidad REQ → CP, técnicas de partición de equivalencia, valores límite, transición de estados y seguridad por roles. Encadenamiento de tokens e ids con pasos de preparación (P1–P3). 100 % de aprobados en Postman. | La sesión única por cadete obliga a ordenar los casos (el token "vencido" se obtiene antes del login del caso 01). En las lecciones aprendidas escribimos: *"incorporaríamos desde el inicio Newman en un pipeline de CI/CD"*. |
 | 3 | 5–6 | **Automatización y CI.** Newman con reportes HTML y JSON, entornos local y CI, chequeos globales (tiempo de respuesta, JSON, formato de error), paso de limpieza Z1, mock del contrato y GitHub Actions. Aserciones por corrida: de 35 a 90. | Cumplimos lo que habíamos dicho en el Sprint 2. Pero el pipeline solo corría contra el mock: el job contra la API real quedó configurado y nunca se ejecutó. |
 | 4 | 7–8 | **Optimización y defensa.** Corrimos la suite contra la API real y encontramos que no era estable. La estabilizamos, reemplazamos el mock por la API real dentro del pipeline, sumamos un flujo corto de reglas de negocio, cobertura de código, publicación del reporte y métricas reales. | Un verde que no prueba contra el sistema real es una falsa seguridad. Una suite vale por su confiabilidad, no por su cantidad de casos. |

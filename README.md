@@ -18,7 +18,7 @@ La suite tiene **22 casos de prueba**: los 15 del Sprint 2 (5 endpoints × 3) y 
 | `postman/entorno-instituto.postman_environment.json` | Copia del instituto (`instituto.cademcadeteria.com.ar`). Las contraseñas no están en el repo |
 | `.github/workflows/tests.yml` | Pipeline de CI/CD |
 | `scripts/resumen.js` | Resumen de resultados y cobertura (consola y pestaña del workflow) |
-| `docs/sprint2/`, `docs/sprint3/` | Entregas anteriores, tal como se presentaron |
+| `docs/sprint1/`, `docs/sprint2/`, `docs/sprint3/` | Entregas anteriores, tal como se presentaron (en el Sprint 1 el sistema bajo prueba era la API de Gestión de Alumnos) |
 | `docs/sprint4/` | Documento final y análisis de resultados (Markdown y PDF) y presentación de la defensa |
 | `reportes/` | Se genera en cada corrida (no se versiona) |
 
