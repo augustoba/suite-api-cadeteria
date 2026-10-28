@@ -72,7 +72,8 @@ Este sprint no fue de hacer más, fue de hacer mejor:
 | 10 | **Flujo corto (7 casos), no exhaustivo** | El sprint pide hacer mejor, no más. 7 casos alcanzan para cubrir el camino crítico y las reglas antifraude. | 18 casos con todas las variantes: más mantenimiento para poco riesgo adicional. |
 | 11 | **Cobertura con el agente de JaCoCo pegado a la API mientras corre la suite** | Mide qué código del backend ejercita *esta* suite, sin tocar el proyecto del backend. | Correr los tests unitarios del backend: miden otra cosa. |
 | 12 | **Corrida diaria programada** | Detecta si algo cambió (dependencias, imagen de MySQL) aunque nadie haya subido cambios. | Solo en cada push: un repo quieto nunca avisa. |
-| 13 | **Iteraciones configurables** (`-n`) desde el botón del workflow | Permiten medir la estabilidad (10 corridas seguidas) sin tocar el pipeline. | Repetir a mano. |
+| 13 | **Precondición P1b**: si el cadete de prueba no tiene la cuota semanal paga, la suite la habilita como el admin | El backend deshabilita a todos los cadetes de pago semanal cada lunes: sin esto, el job contra el instituto fallaría todas las semanas (ver H8). | Habilitarlo a mano antes de cada corrida. |
+| 14 | **Iteraciones configurables** (`-n`) desde el botón del workflow | Permiten medir la estabilidad (10 corridas seguidas) sin tocar el pipeline. | Repetir a mano. |
 
 ## 5. Métricas
 
@@ -122,6 +123,7 @@ El detalle, con el impacto para el negocio y la recomendación de cada uno, est�
 | H4 | El job contra la API real del Sprint 3 nunca podía funcionar | Pipeline | Media |
 | H5 | Cualquiera que conozca el DNI de un cadete puede bloquearle la cuenta 15 minutos | Seguridad | **Alta** |
 | H6 | Asignar un pedido anulado devuelve un mensaje que no corresponde | Usabilidad | Baja |
+| H8 | El entorno compartido no estaba en condiciones de probar (cuotas deshabilitadas cada lunes, contraseña temporal vencida) | Entorno de prueba | Media |
 | H7 | Las reglas antifraude y de disponibilidad funcionan como están especificadas | Verificación | — |
 
 ## 7. Lecciones aprendidas

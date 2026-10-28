@@ -72,6 +72,14 @@ Cuando se corrija, sumar un caso de regresión. Mientras tanto, la suite nunca s
 
 **Qué recomendamos.** Que la API verifique primero si el pedido está cerrado, y use el mismo mensaje en los dos casos.
 
+### H8 — El entorno compartido no estaba en condiciones de probar · Entorno de prueba · Severidad media
+
+**Qué pasó.** Al preparar el job contra la copia del instituto, ningún cadete podía iniciar sesión. Ninguno tenía la cuota semanal habilitada (el backend deshabilita a todos los cadetes de pago semanal cada lunes a las 0:00), y al cadete de prueba le habían reenviado la contraseña y la temporal había vencido sin usarse.
+
+**Qué significa para el negocio.** Un entorno de prueba que nadie mantiene termina siendo inutilizable justo cuando hace falta, como el día de una demo. Y la regla del lunes, correcta para el negocio, rompe cualquier prueba automática que no la tenga en cuenta.
+
+**Qué recomendamos (y aplicamos).** Se dejaron los cadetes del instituto con las contraseñas de la carga demo, y la suite suma la precondición P1b: si el cadete de prueba no tiene la cuota paga, la habilita como lo haría el admin. Con eso, la corrida contra el instituto dio 22 de 22.
+
 ### H7 — Las reglas antifraude y de disponibilidad funcionan · Verificación
 
 | Regla | Caso | Resultado |

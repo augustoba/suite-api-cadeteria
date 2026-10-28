@@ -89,6 +89,51 @@
           }
         },
         {
+          "name": "P1b - Cuota semanal del cadete al dia (precondicion, no cuenta como caso)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "const c = pm.response.json().find(function (x) { return x.username === pm.variables.get(\"cadeteUsuario\"); });",
+                  "pm.test(\"existe el cadete de prueba\", function () { pm.expect(c).to.not.equal(undefined); });",
+                  "if (c && c.modalidadPago === \"SEMANAL\" && !c.habilitadoPago) {",
+                  "  console.log(\"El cadete no tiene la cuota semanal paga: se habilita como lo haria el admin\");",
+                  "  pm.sendRequest({ url: pm.variables.get(\"baseUrl\") + \"/api/admin/cadetes/\" + c.id + \"/pago-semanal/habilitar\", method: \"POST\",",
+                  "    header: { \"Content-Type\": \"application/json\", Authorization: \"Bearer \" + pm.collectionVariables.get(\"tokenAdmin\") },",
+                  "    body: { mode: \"raw\", raw: JSON.stringify({ montoPagado: c.montoSemanalActual || 5000 }) } }, function (err, res) {",
+                  "    pm.test(\"se habilita el pago semanal\", function () { pm.expect(err).to.eql(null); pm.expect(res.code).to.eql(200); });",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/cadetes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "cadetes"
+              ]
+            },
+            "description": "Un cadete SEMANAL sin la cuota paga no puede iniciar sesion, y el backend deshabilita a todos los SEMANAL cada lunes a las 0:00. En una base nueva el cadete demo ya esta habilitado; en la copia del instituto, despues de un lunes, no. La suite no depende de eso: si hace falta, habilita el pago como lo haria el admin."
+          }
+        },
+        {
           "name": "P2 - Login cadete (guarda tokenVencido)",
           "event": [
             {

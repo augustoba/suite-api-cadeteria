@@ -12,7 +12,7 @@ La suite tiene **22 casos de prueba**: los 15 del Sprint 2 (5 endpoints × 3) y 
 
 | Ruta | Qué es |
 |---|---|
-| `postman/coleccion-cadeteria.postman_collection.json` | La colección: 22 casos, 6 pasos de preparación (P) y 1 de limpieza (Z) |
+| `postman/coleccion-cadeteria.postman_collection.json` | La colección: 22 casos, 7 pasos de preparación (P) y 1 de limpieza (Z) |
 | `postman/entorno-local.postman_environment.json` | API en `localhost:8080` con la carga de demostración |
 | `postman/entorno-ci.postman_environment.json` | API levantada dentro del pipeline |
 | `postman/entorno-instituto.postman_environment.json` | Copia del instituto (`instituto.cademcadeteria.com.ar`). Las contraseñas no están en el repo |
@@ -77,6 +77,6 @@ La colección se corre **completa y en orden**: los pasos P guardan tokens e ids
 
 ## Limitaciones conocidas
 
-- Depende de la carga de demostración: admin `admin` y cadete `30111222`.
+- Depende de la carga de demostración: admin `admin` y cadete `30111222` con `cadete123`. Si el cadete no tiene la cuota semanal paga (el backend las deshabilita cada lunes), P1b la habilita.
 - El caso 21 supone que `minutos_minimos_retiro_entrega` es mayor que 0 (vale 10 por defecto). Si en Configuración se pone en 0, el caso falla, y es correcto que falle: la regla dejó de existir.
 - Cada corrida crea y cierra un pedido de prueba ("Prueba automatizada (Newman) - se puede borrar"), y si el cadete tiene incidentes abiertos, los cierra.
