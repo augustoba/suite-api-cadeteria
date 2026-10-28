@@ -20,9 +20,10 @@ on:
         default: 1
 
 env:
-  # Backend bajo prueba: la misma version que esta desplegada en la copia del instituto.
+  # Backend bajo prueba: la misma version que esta desplegada en la copia del instituto (30a29d1).
+  # actions/checkout necesita el hash completo: con el corto busca una rama o tag con ese nombre y falla.
   BACKEND_REPO: ${{ vars.BACKEND_REPO || 'augustoba/cadeteria-backend' }}
-  BACKEND_REF: ${{ vars.BACKEND_REF || '30a29d1' }}
+  BACKEND_REF: ${{ vars.BACKEND_REF || '30a29d1bf9213785cdeb6a2e9d19666720160f43' }}
 
 jobs:
   # 1) API aislada: MySQL y backend se levantan dentro de la maquina de GitHub, con base nueva y la carga
@@ -31,6 +32,8 @@ jobs:
     if: github.event_name != 'workflow_dispatch' || inputs.destino == 'aislada'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    outputs:
+      reporte: ${{ steps.pagina.outcome == 'success' && 'si' || 'no' }}
     services:
       mysql:
         image: mysql:8.0
@@ -44,7 +47,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Descargar el backend (${{ env.BACKEND_REF }})
+      - name: Descargar el backend
         uses: actions/checkout@v4
         with:
           repository: ${{ env.BACKEND_REPO }}
@@ -62,6 +65,7 @@ jobs:
         run: cd backend && chmod +x mvnw && ./mvnw -B -q package -DskipTests
 
       - name: Levantar el backend (con JaCoCo para medir cobertura)
+        id: api
         run: |
           curl -sL -o jacocoagent.jar https://repo1.maven.org/maven2/org/jacoco/org.jacoco.agent/0.8.12/org.jacoco.agent-0.8.12-runtime.jar
           curl -sL -o jacococli.jar https://repo1.maven.org/maven2/org/jacoco/org.jacoco.cli/0.8.12/org.jacoco.cli-0.8.12-nodeps.jar
@@ -87,14 +91,14 @@ jobs:
         run: npm run test:ci -- -n ${{ inputs.iteraciones || 1 }}
 
       - name: Cobertura de codigo del backend
-        if: always()
+        if: always() && steps.api.outcome == 'success'
         run: |
           java -jar jacococli.jar dump --port 6300 --destfile jacoco.exec
           java -jar jacococli.jar report jacoco.exec --classfiles backend/target/classes \
             --sourcefiles backend/src/main/java --html reportes/cobertura --csv reportes/cobertura.csv
 
       - name: Resumen en la pestana del workflow
-        if: always()
+        if: always() && hashFiles('reportes/reporte.json') != ''
         run: npm run resumen
 
       - name: Subir reportes
@@ -107,11 +111,12 @@ jobs:
             api.log
 
       - name: Portada de la pagina (el reporte de Newman)
-        if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && hashFiles('reportes/reporte.html') != ''
         run: cp reportes/reporte.html reportes/index.html
 
       - name: Preparar la pagina del reporte
-        if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        id: pagina
+        if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && hashFiles('reportes/reporte.html') != ''
         uses: actions/upload-pages-artifact@v3
         with:
           path: reportes/
@@ -120,7 +125,7 @@ jobs:
   #    Es la unica "entrega" del pipeline: no despliega nada en ningun servidor.
   publicar-reporte:
     needs: api-aislada
-    if: always() && needs.api-aislada.result != 'skipped' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: always() && needs.api-aislada.outputs.reporte == 'si' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       pages: write
