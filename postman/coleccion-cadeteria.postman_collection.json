@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Instituto - 15 casos de prueba (API cadetería)",
-    "description": "5 endpoints x 3 casos (1 OK + 2 con error) = 15 casos.\n\nCómo usarla:\n1. En la pestaña Variables de la colección, cargar baseUrl y los usuarios de prueba.\n2. Correr la colección completa y EN ORDEN (Run collection): la carpeta \"0. Preparación\" guarda los tokens y los ids que usan los casos.\n3. Cada caso valida solo el código HTTP y el \"codigo\" de error que devuelve la API.\n\nFormato de los errores: { status, error, codigo, message, fieldErrors }.",
+    "name": "Instituto - Suite automatizada API cadetería (Sprint 3)",
+    "description": "5 endpoints x 3 casos (1 OK + 2 con error) = 15 casos.\n\nCómo usarla:\n1. En la pestaña Variables de la colección, cargar baseUrl y los usuarios de prueba.\n2. Correr la colección completa y EN ORDEN (Run collection): la carpeta \"0. Preparación\" guarda los tokens y los ids que usan los casos.\n3. Cada caso valida solo el código HTTP y el \"codigo\" de error que devuelve la API.\n\nFormato de los errores: { status, error, codigo, message, fieldErrors }.\n\nSprint 3: se agregan chequeos globales (tiempo, Content-Type, formato de error), parametrización (idInexistente, maxMs), credenciales en entornos y limpieza final. Ejecución automática con Newman (ver README).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -10,20 +10,12 @@
       "value": "http://localhost:8080"
     },
     {
-      "key": "adminUsuario",
-      "value": "admin"
+      "key": "idInexistente",
+      "value": "no-existe-99999"
     },
     {
-      "key": "adminPassword",
-      "value": "cambiar123"
-    },
-    {
-      "key": "cadeteUsuario",
-      "value": "30111222"
-    },
-    {
-      "key": "cadetePassword",
-      "value": "cadete123"
+      "key": "maxMs",
+      "value": "1500"
     },
     {
       "key": "tokenAdmin",
@@ -162,6 +154,7 @@
                   "  pm.expect(r.tokenType).to.eql(\"Bearer\");",
                   "  pm.expect(r.tipo).to.eql(\"CADETE\");",
                   "});",
+                  "pm.test(\"informa cuándo vence el token (expiresAt)\", function () { pm.expect(pm.response.json().expiresAt).to.be.a(\"string\").and.not.empty; });",
                   "pm.collectionVariables.set(\"tokenCadete\", pm.response.json().token);"
                 ]
               }
@@ -309,8 +302,10 @@
                 "exec": [
                   "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
                   "pm.test(\"devuelve los datos del cadete que inició sesión\", function () {",
-                  "  pm.expect(pm.response.json().dni).to.eql(pm.collectionVariables.get(\"cadeteUsuario\"));",
+                  "  pm.expect(pm.response.json().dni).to.eql(pm.variables.get(\"cadeteUsuario\"));",
                   "});",
+                  "pm.test(\"no expone la contraseña\", function () { pm.expect(pm.response.json()).to.not.have.any.keys(\"password\", \"contrasenia\", \"clave\"); });",
+                  "pm.test(\"incluye nombre y apellido\", function () { var c = pm.response.json(); pm.expect(c.nombre).to.be.a(\"string\").and.not.empty; pm.expect(c.apellido).to.be.a(\"string\").and.not.empty; });",
                   "pm.collectionVariables.set(\"cadeteId\", pm.response.json().id);"
                 ]
               }
@@ -426,7 +421,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.test(\"devuelve el cadete pedido\", function () { pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get(\"cadeteId\")); });"
+                  "pm.test(\"devuelve el cadete pedido\", function () { pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get(\"cadeteId\")); });",
+                  "pm.test(\"no expone la contraseña\", function () { pm.expect(pm.response.json()).to.not.have.any.keys(\"password\", \"contrasenia\", \"clave\"); });"
                 ]
               }
             }
@@ -478,7 +474,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/admin/cadetes/no-existe-99999",
+              "raw": "{{baseUrl}}/api/admin/cadetes/{{idInexistente}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -486,7 +482,7 @@
                 "api",
                 "admin",
                 "cadetes",
-                "no-existe-99999"
+                "{{idInexistente}}"
               ]
             },
             "description": "Mensaje esperado: \"Cadete no encontrado: no-existe-99999\""
@@ -543,7 +539,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });"
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"devuelve al mismo cadete\", function () { pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get(\"cadeteId\")); });"
                 ]
               }
             }
@@ -738,7 +735,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
-                  "pm.test(\"devuelve el pedido pedido\", function () { pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get(\"pedidoId\")); });"
+                  "pm.test(\"devuelve el pedido pedido\", function () { pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get(\"pedidoId\")); });",
+                  "pm.test(\"incluye número de pedido\", function () { pm.expect(pm.response.json()).to.have.property(\"numero\"); });"
                 ]
               }
             }
@@ -790,7 +788,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/pedidos/me/no-existe-99999",
+              "raw": "{{baseUrl}}/api/pedidos/me/{{idInexistente}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -798,7 +796,7 @@
                 "api",
                 "pedidos",
                 "me",
-                "no-existe-99999"
+                "{{idInexistente}}"
               ]
             },
             "description": "Mensaje esperado: \"Pedido no encontrado: no-existe-99999\""
@@ -843,6 +841,77 @@
           }
         }
       ]
+    },
+    {
+      "name": "Z. Limpieza (no cuenta como caso)",
+      "item": [
+        {
+          "name": "Z1 - Restaurar estado del cadete a LIBRE",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCadete}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estadoId\": \"LIBRE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/cadetes/me/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cadetes",
+                "me",
+                "estado"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Chequeos comunes a todos los requests (reemplazan código repetido en cada caso)",
+          "const maxMs = parseInt(pm.variables.get('maxMs') || '1500', 10);",
+          "pm.test('Tiempo de respuesta < ' + maxMs + ' ms', function () { pm.expect(pm.response.responseTime).to.be.below(maxMs); });",
+          "pm.test('Content-Type es JSON', function () { pm.expect(pm.response.headers.get('Content-Type') || '').to.include('application/json'); });",
+          "if (pm.response.code >= 400) {",
+          "  pm.test('Error con formato estándar (status, error, codigo, message)', function () {",
+          "    const r = pm.response.json();",
+          "    pm.expect(r.status).to.eql(pm.response.code);",
+          "    pm.expect(r.error).to.be.a('string').and.not.empty;",
+          "    pm.expect(r.codigo).to.be.a('string').and.not.empty;",
+          "    pm.expect(r.message).to.be.a('string').and.not.empty;",
+          "  });",
+          "}"
+        ]
+      }
     }
   ]
 }

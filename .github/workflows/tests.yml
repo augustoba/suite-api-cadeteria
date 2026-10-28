@@ -1,0 +1,111 @@
+name: Pruebas de API (Newman)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # 1) Valida la suite y el pipeline contra un servidor simulado del contrato de la API.
+  #    Corre siempre, sin depender del backend real.
+  suite-contra-mock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm install
+
+      - name: Levantar el mock de la API
+        run: |
+          nohup node mock/server.js > mock.log 2>&1 &
+          for i in $(seq 1 15); do curl -sf http://localhost:8080/actuator/health && break || sleep 1; done
+
+      - name: Ejecutar la colección con Newman
+        run: npm run test:ci
+
+      - name: Resumen en la pestaña del workflow
+        if: always()
+        run: npm run resumen
+
+      - name: Subir reportes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reportes-mock
+          path: |
+            reportes/
+            mock.log
+
+  # 2) Corre la misma colección contra el backend real (Spring Boot + MySQL).
+  #    Se activa cuando se define la variable del repositorio BACKEND_REPO (ej.: usuario/backend-cadeteria)
+  #    y el secreto BACKEND_TOKEN si el repositorio es privado.
+  api-real:
+    if: ${{ vars.BACKEND_REPO != '' }}
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: cadeteria
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.BACKEND_REPO }}
+          token: ${{ secrets.BACKEND_TOKEN || github.token }}
+          path: backend
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Compilar el backend
+        run: cd backend && ./mvnw -B -q package -DskipTests
+
+      - name: Levantar el backend
+        # AJUSTAR: nombre del jar y propiedades si difieren. Debe quedar cargada la carga de demostración
+        # (admin, cadete 30111222 y pedidos de ejemplo), igual que en el entorno local.
+        run: |
+          nohup java -jar backend/target/*SNAPSHOT.jar \
+            --server.port=8080 \
+            --spring.datasource.url=jdbc:mysql://127.0.0.1:3306/cadeteria \
+            --spring.datasource.username=root \
+            --spring.datasource.password=root > api.log 2>&1 &
+          for i in $(seq 1 60); do curl -s http://localhost:8080/api/auth/login/cadete -o /dev/null && break || sleep 2; done
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm install
+
+      - name: Ejecutar la colección con Newman
+        run: npm run test:ci
+
+      - name: Resumen en la pestaña del workflow
+        if: always()
+        run: npm run resumen
+
+      - name: Subir reportes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reportes-api-real
+          path: |
+            reportes/
+            api.log
