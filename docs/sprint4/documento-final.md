@@ -153,4 +153,4 @@ Las tareas se repartieron en cuatro partes de peso similar. Además, los cuatro 
 | Leandro Raúl Vallejo | Organización del repositorio, documentación de la evolución de los sprints 1 a 3 y redacción del documento final. | Evolución del proyecto |
 | Germán Garnica | Diseño y estabilización de los casos de prueba, flujo de un pedido y preparación de la demo en Postman. | La suite: casos, técnicas y demo |
 | Jorge Alberto Medina | Mediciones (estabilidad, cobertura y tiempos), análisis de resultados y redacción de los hallazgos. | Hallazgos y métricas |
-| Cesar Augusto Basaury Marquesto | Pipeline de CI/CD en GitHub Actions, publicación del reporte y preparación del entorno del instituto. | Pipeline CI/CD y decisiones técnicas |
+| Cesar Augusto Basaury Marquesto | Decisiones técnicas del sprint (estrategia de prueba, entorno aislado, qué automatizar y qué no), pipeline de CI/CD en GitHub Actions y publicación del reporte. | Pipeline CI/CD y decisiones técnicas |
