@@ -1,0 +1,848 @@
+{
+  "info": {
+    "name": "Instituto - 15 casos de prueba (API cadetería)",
+    "description": "5 endpoints x 3 casos (1 OK + 2 con error) = 15 casos.\n\nCómo usarla:\n1. En la pestaña Variables de la colección, cargar baseUrl y los usuarios de prueba.\n2. Correr la colección completa y EN ORDEN (Run collection): la carpeta \"0. Preparación\" guarda los tokens y los ids que usan los casos.\n3. Cada caso valida solo el código HTTP y el \"codigo\" de error que devuelve la API.\n\nFormato de los errores: { status, error, codigo, message, fieldErrors }.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "adminUsuario",
+      "value": "admin"
+    },
+    {
+      "key": "adminPassword",
+      "value": "cambiar123"
+    },
+    {
+      "key": "cadeteUsuario",
+      "value": "30111222"
+    },
+    {
+      "key": "cadetePassword",
+      "value": "cadete123"
+    },
+    {
+      "key": "tokenAdmin",
+      "value": ""
+    },
+    {
+      "key": "tokenCadete",
+      "value": ""
+    },
+    {
+      "key": "tokenVencido",
+      "value": ""
+    },
+    {
+      "key": "cadeteId",
+      "value": ""
+    },
+    {
+      "key": "pedidoId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Preparación (no cuenta como caso)",
+      "item": [
+        {
+          "name": "P1 - Login admin (guarda tokenAdmin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.collectionVariables.set(\"tokenAdmin\", pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login/admin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login",
+                "admin"
+              ]
+            },
+            "description": "Token de administrador para los casos 7, 8 y 15.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{adminUsuario}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "P2 - Login cadete (guarda tokenVencido)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.collectionVariables.set(\"tokenVencido\", pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login/cadete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login",
+                "cadete"
+              ]
+            },
+            "description": "Este token deja de valer cuando el caso 01 vuelve a iniciar sesión con el mismo usuario (una sola sesión por cadete). Se usa en el caso 06.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{cadeteUsuario}}\",\n  \"password\": \"{{cadetePassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. POST /api/auth/login/cadete",
+      "item": [
+        {
+          "name": "01 - Login correcto -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"devuelve token Bearer de tipo CADETE\", function () {",
+                  "  var r = pm.response.json();",
+                  "  pm.expect(r.token).to.be.a(\"string\").and.not.empty;",
+                  "  pm.expect(r.tokenType).to.eql(\"Bearer\");",
+                  "  pm.expect(r.tipo).to.eql(\"CADETE\");",
+                  "});",
+                  "pm.collectionVariables.set(\"tokenCadete\", pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login/cadete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login",
+                "cadete"
+              ]
+            },
+            "description": "Usuario (DNI) y contraseña correctos. Devuelve el token y guarda tokenCadete.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{cadeteUsuario}}\",\n  \"password\": \"{{cadetePassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "02 - Contraseña incorrecta -> 401 CREDENCIALES_INVALIDAS",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"codigo = CREDENCIALES_INVALIDAS\", function () { pm.expect(pm.response.json().codigo).to.eql(\"CREDENCIALES_INVALIDAS\"); });",
+                  "console.log(pm.info.requestName + \" -> \" + pm.response.code + \" \" + pm.response.json().codigo + \": \" + pm.response.json().message);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login/cadete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login",
+                "cadete"
+              ]
+            },
+            "description": "Mensaje esperado: \"Usuario o contraseña incorrectos.\"",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{cadeteUsuario}}\",\n  \"password\": \"clave-incorrecta\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "03 - Letras donde va un número (versionApp) -> 400 VALIDACION",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"codigo = VALIDACION\", function () { pm.expect(pm.response.json().codigo).to.eql(\"VALIDACION\"); });",
+                  "console.log(pm.info.requestName + \" -> \" + pm.response.code + \" \" + pm.response.json().codigo + \": \" + pm.response.json().message);",
+                  "pm.test(\"señala el campo versionApp\", function () { pm.expect(pm.response.json().fieldErrors).to.have.property(\"versionApp\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login/cadete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login",
+                "cadete"
+              ]
+            },
+            "description": "versionApp es numérico. Mensaje esperado: \"El dato «versionApp» no tiene el formato correcto.\"",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{cadeteUsuario}}\",\n  \"password\": \"{{cadetePassword}}\",\n  \"versionApp\": \"abc\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. GET /api/cadetes/me",
+      "item": [
+        {
+          "name": "04 - Token válido -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"devuelve los datos del cadete que inició sesión\", function () {",
+                  "  pm.expect(pm.response.json().dni).to.eql(pm.collectionVariables.get(\"cadeteUsuario\"));",
+                  "});",
+                  "pm.collectionVariables.set(\"cadeteId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCadete}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cadetes/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cadetes",
+                "me"
+              ]
+            },
+            "description": "Devuelve el perfil del cadete. Guarda cadeteId para los casos 07 y 09."
+          }
+        },
+        {
+          "name": "05 - Token mal formado -> 401 NO_AUTENTICADO",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"codigo = NO_AUTENTICADO\", function () { pm.expect(pm.response.json().codigo).to.eql(\"NO_AUTENTICADO\"); });",
+                  "console.log(pm.info.requestName + \" -> \" + pm.response.code + \" \" + pm.response.json().codigo + \": \" + pm.response.json().message);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer esto.no.esuntoken"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cadetes/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cadetes",
+                "me"
+              ]
+            },
+            "description": "Mensaje esperado: \"Tu sesión venció o no iniciaste sesión.\""
+          }
+        },
+        {
+          "name": "06 - Token vencido (sesión anterior) -> 401 NO_AUTENTICADO",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"codigo = NO_AUTENTICADO\", function () { pm.expect(pm.response.json().codigo).to.eql(\"NO_AUTENTICADO\"); });",
+                  "console.log(pm.info.requestName + \" -> \" + pm.response.code + \" \" + pm.response.json().codigo + \": \" + pm.response.json().message);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenVencido}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cadetes/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cadetes",
+                "me"
+              ]
+            },
+            "description": "Usa el token del paso P2, que dejó de valer cuando el caso 01 inició sesión de nuevo. Mensaje esperado: \"Tu sesión venció o no iniciaste sesión.\""
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. GET /api/admin/cadetes/{id}",
+      "item": [
+        {
+          "name": "07 - Cadete que existe -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"devuelve el cadete pedido\", function () { pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get(\"cadeteId\")); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/cadetes/{{cadeteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "cadetes",
+                "{{cadeteId}}"
+              ]
+            },
+            "description": "Con token de administrador."
+          }
+        },
+        {
+          "name": "08 - Cadete que no existe -> 404 NO_ENCONTRADO",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"codigo = NO_ENCONTRADO\", function () { pm.expect(pm.response.json().codigo).to.eql(\"NO_ENCONTRADO\"); });",
+                  "console.log(pm.info.requestName + \" -> \" + pm.response.code + \" \" + pm.response.json().codigo + \": \" + pm.response.json().message);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/cadetes/no-existe-99999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "cadetes",
+                "no-existe-99999"
+              ]
+            },
+            "description": "Mensaje esperado: \"Cadete no encontrado: no-existe-99999\""
+          }
+        },
+        {
+          "name": "09 - Con token de cadete (sin permiso) -> 403 SIN_PERMISO",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", function () { pm.response.to.have.status(403); });",
+                  "pm.test(\"codigo = SIN_PERMISO\", function () { pm.expect(pm.response.json().codigo).to.eql(\"SIN_PERMISO\"); });",
+                  "console.log(pm.info.requestName + \" -> \" + pm.response.code + \" \" + pm.response.json().codigo + \": \" + pm.response.json().message);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCadete}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/cadetes/{{cadeteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "cadetes",
+                "{{cadeteId}}"
+              ]
+            },
+            "description": "Un cadete no puede entrar a las rutas del panel. Mensaje esperado: \"No tenés permiso para hacer eso.\""
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. PATCH /api/cadetes/me/estado",
+      "item": [
+        {
+          "name": "10 - Estado válido -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCadete}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cadetes/me/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cadetes",
+                "me",
+                "estado"
+              ]
+            },
+            "description": "Valores aceptados: LIBRE, OCUPADO o DESCONECTADO.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estadoId\": \"DESCONECTADO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "11 - Estado que no existe -> 400 VALIDACION",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"codigo = VALIDACION\", function () { pm.expect(pm.response.json().codigo).to.eql(\"VALIDACION\"); });",
+                  "console.log(pm.info.requestName + \" -> \" + pm.response.code + \" \" + pm.response.json().codigo + \": \" + pm.response.json().message);",
+                  "pm.test(\"señala el campo estadoId\", function () { pm.expect(pm.response.json().fieldErrors).to.have.property(\"estadoId\"); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCadete}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cadetes/me/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cadetes",
+                "me",
+                "estado"
+              ]
+            },
+            "description": "Mensaje esperado: \"Revisá los datos: El estado tiene que ser LIBRE, OCUPADO o DESCONECTADO.\"",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estadoId\": \"VOLANDO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "12 - Sin token -> 401 NO_AUTENTICADO",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", function () { pm.response.to.have.status(401); });",
+                  "pm.test(\"codigo = NO_AUTENTICADO\", function () { pm.expect(pm.response.json().codigo).to.eql(\"NO_AUTENTICADO\"); });",
+                  "console.log(pm.info.requestName + \" -> \" + pm.response.code + \" \" + pm.response.json().codigo + \": \" + pm.response.json().message);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cadetes/me/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cadetes",
+                "me",
+                "estado"
+              ]
+            },
+            "description": "Sin encabezado Authorization. Mensaje esperado: \"Tu sesión venció o no iniciaste sesión.\"",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estadoId\": \"LIBRE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. GET /api/pedidos/me/{id}",
+      "item": [
+        {
+          "name": "P3 - Historial del cadete (guarda pedidoId, no cuenta como caso)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"el cadete tiene al menos un pedido finalizado\", function () {",
+                  "  pm.expect(pm.response.json().pedidos).to.be.an(\"array\").that.is.not.empty;",
+                  "});",
+                  "var pedidos = pm.response.json().pedidos || [];",
+                  "if (pedidos.length) { pm.collectionVariables.set(\"pedidoId\", pedidos[0].id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCadete}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pedidos/me/historial",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pedidos",
+                "me",
+                "historial"
+              ]
+            },
+            "description": "Toma el id de un pedido propio para el caso 13. Si el cadete no tiene pedidos, cargar pedidoId a mano en las variables."
+          }
+        },
+        {
+          "name": "13 - Pedido propio -> 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"devuelve el pedido pedido\", function () { pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get(\"pedidoId\")); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCadete}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pedidos/me/{{pedidoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pedidos",
+                "me",
+                "{{pedidoId}}"
+              ]
+            },
+            "description": "Detalle de un pedido del cadete que inició sesión."
+          }
+        },
+        {
+          "name": "14 - Pedido que no existe -> 404 NO_ENCONTRADO",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"codigo = NO_ENCONTRADO\", function () { pm.expect(pm.response.json().codigo).to.eql(\"NO_ENCONTRADO\"); });",
+                  "console.log(pm.info.requestName + \" -> \" + pm.response.code + \" \" + pm.response.json().codigo + \": \" + pm.response.json().message);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenCadete}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pedidos/me/no-existe-99999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pedidos",
+                "me",
+                "no-existe-99999"
+              ]
+            },
+            "description": "Mensaje esperado: \"Pedido no encontrado: no-existe-99999\""
+          }
+        },
+        {
+          "name": "15 - Con token de admin (rol equivocado) -> 403 SIN_PERMISO",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", function () { pm.response.to.have.status(403); });",
+                  "pm.test(\"codigo = SIN_PERMISO\", function () { pm.expect(pm.response.json().codigo).to.eql(\"SIN_PERMISO\"); });",
+                  "console.log(pm.info.requestName + \" -> \" + pm.response.code + \" \" + pm.response.json().codigo + \": \" + pm.response.json().message);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pedidos/me/{{pedidoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "pedidos",
+                "me",
+                "{{pedidoId}}"
+              ]
+            },
+            "description": "Las rutas /api/pedidos/me son solo para cadetes. Mensaje esperado: \"No tenés permiso para hacer eso.\""
+          }
+        }
+      ]
+    }
+  ]
+}
